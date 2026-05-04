@@ -1,0 +1,28 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "radix-maia",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "app/globals.css",
+    "baseColor": "taupe",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "remixicon",
+  "rtl": false,
+  "menuColor": "inverted-translucent",
+  "menuAccent": "subtle",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "registries": {
+    "@aceternity": "https://ui.aceternity.com/registry/{name}.json",
+    "@react-bits": "https://reactbits.dev/r/{name}.json"
+  }
+}
