@@ -1,0 +1,1 @@
+Audio transcription endpoint. Handles multipart file upload, saves to local uploads directory, calls OpenAI Whisper API (whisper-1 model), returns transcribed text in JSON. Cleans up uploaded file after processing.

@@ -1,0 +1,1 @@
+Simple health check endpoint. Returns 200 OK with {"status": "ok"} for monitoring and frontend connectivity checks.

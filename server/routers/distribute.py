@@ -1,0 +1,1 @@
+Distribution endpoint. Accepts action items and destination config, routes to Slack webhook or Resend email service based on channels specified.

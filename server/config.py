@@ -1,0 +1,1 @@
+Configuration module using pydantic-settings. Loads environment variables from .env file (OPENAI_API_KEY, RESEND_API_KEY, SLACK_WEBHOOK_URL, etc.) with validation.

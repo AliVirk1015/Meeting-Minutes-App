@@ -42,3 +42,11 @@ next-env.d.ts
 
 /sample_audio
 /generated/prisma
+problem.pdf
+
+# Python server
+/server/.venv
+/server/__pycache__
+/server/*.pyc
+/server/uploads/*
+!/server/uploads/.gitignore

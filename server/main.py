@@ -1,0 +1,1 @@
+FastAPI application entry point. Initializes the app with CORS middleware for localhost:3000, mounts all routers from the routers directory, and includes startup/shutdown events for the uploads directory.

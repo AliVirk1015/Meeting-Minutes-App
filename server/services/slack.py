@@ -1,0 +1,1 @@
+Slack webhook integration. Formats action items as Slack Block Kit message, makes HTTP POST to webhook URL.

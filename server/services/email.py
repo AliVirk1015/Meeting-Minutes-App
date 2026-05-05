@@ -1,0 +1,1 @@
+Email service using Resend API. Formats action items as HTML email, sends to recipient via Resend. Uses aiosmtplib as fallback.

@@ -1,0 +1,1 @@
+OpenAI Whisper service. Wrapper around openai.audio.transcriptions.create for whisper-1 model. Takes file path, returns transcribed text string.
