@@ -1,1 +1,8 @@
-Simple health check endpoint. Returns 200 OK with {"status": "ok"} for monitoring and frontend connectivity checks.
+from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.get("/api/health")
+async def health_check():
+    return {"status": "ok"}

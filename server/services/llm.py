@@ -1,1 +1,1 @@
-LLM service for action item extraction. Uses GPT-4o-mini with JSON mode and structured prompt. Takes transcript string, returns list of action items with text and assignee fields.
+# TODO: Implement LLM service for action item extraction

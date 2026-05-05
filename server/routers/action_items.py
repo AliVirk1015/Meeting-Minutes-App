@@ -1,1 +1,1 @@
-Action item extraction endpoint. Accepts transcript text, sends to GPT-4o-mini with structured system prompt to extract tasks and assignees, returns JSON array of action items.
+# TODO: Implement action item extraction endpoint
