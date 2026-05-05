@@ -13,15 +13,16 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String     @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean    @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   sessions      Session[]
   accounts      Account[]
+  meetings      Meeting[]
 
   @@unique([email])
   @@map("user")
@@ -73,4 +74,84 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// Enum for transcript source type
+enum TranscriptSource {
+  UPLOAD
+  RECORDING
+  LIVE
+}
+
+// Meeting model - stores metadata about a meeting
+model Meeting {
+  id           String       @id @default(uuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  date         DateTime     @default(now())
+  duration     Int? // Duration in seconds
+  participants Int?         @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  transcript   Transcript?
+  summary      Summary?
+  actionItems  ActionItem[]
+  audioFile    AudioFile?
+
+  @@index([userId])
+  @@index([date])
+  @@map("meeting")
+}
+
+// Transcript model - stores the transcribed text
+model Transcript {
+  id        String         @id @default(uuid())
+  meetingId String         @unique
+  meeting   Meeting        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  content   String         @db.Text
+  source    TranscriptSource
+  createdAt DateTime       @default(now())
+
+  @@map("transcript")
+}
+
+// Summary model - stores the AI-generated summary
+model Summary {
+  id        String   @id @default(uuid())
+  meetingId String   @unique
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@map("summary")
+}
+
+// ActionItem model - stores extracted action items
+model ActionItem {
+  id        String   @id @default(uuid())
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  text      String
+  assignee  String? // Can be null if no assignee identified
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([meetingId])
+  @@map("action_item")
+}
+
+// AudioFile model - stores metadata about uploaded/recorded audio
+model AudioFile {
+  id        String   @id @default(uuid())
+  meetingId String   @unique
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  filePath  String // Path on local filesystem or storage URL
+  fileName  String
+  fileSize  Int // Size in bytes
+  mimeType  String // audio/webm, audio/mp3, etc.
+  duration  Int? // Duration in seconds
+  createdAt DateTime @default(now())
+
+  @@map("audio_file")
 }
