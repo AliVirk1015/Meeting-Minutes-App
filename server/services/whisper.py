@@ -1,3 +1,5 @@
+import io
+
 from openai import OpenAI
 
 from config import settings
@@ -14,4 +16,14 @@ def transcribe_audio(file_path: str) -> str:
             model="whisper-large-v3",
             file=audio_file,
         )
+    return transcript.text
+
+
+def transcribe_bytes(audio_data: bytes) -> str:
+    audio_file = io.BytesIO(audio_data)
+    audio_file.name = "audio.webm"
+    transcript = client.audio.transcriptions.create(
+        model="whisper-large-v3",
+        file=audio_file,
+    )
     return transcript.text
