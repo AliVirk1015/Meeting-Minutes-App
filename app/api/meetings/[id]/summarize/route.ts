@@ -26,6 +26,7 @@ export async function POST(
   }
 
   try {
+    console.log("[summarize] Calling FastAPI:", `${FASTAPI_URL}/api/summarize`)
     const res = await fetch(`${FASTAPI_URL}/api/summarize`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,13 +35,13 @@ export async function POST(
 
     if (!res.ok) {
       const errData = await res.json().catch(() => null)
-      return errorResponse(
-        errData?.detail || `Summarization service returned ${res.status}`,
-        res.status
-      )
+      const detail = errData?.detail || `Summarization service returned ${res.status}`
+      console.error("[summarize] FastAPI error:", detail)
+      return errorResponse(detail, res.status)
     }
 
     const data = await res.json()
+    console.log("[summarize] FastAPI response received")
 
     const summaryContent =
       typeof data.summary === "string"

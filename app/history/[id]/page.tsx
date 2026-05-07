@@ -25,7 +25,7 @@ import {
   RiSparkling2Line,
   RiFileList3Line,
   RiCheckboxCircleLine,
-  RiCheckboxCircleBlankLine,
+  RiCheckboxBlankCircleLine,
 } from "@remixicon/react"
 
 interface Meeting {
@@ -175,9 +175,11 @@ export default function MeetingDetailPage({
       const res = await fetch(`/api/meetings/${meetingId}/summarize`, {
         method: "POST",
       })
+      const body = await res.text().catch(() => "Could not read response")
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || "Summarization failed")
+        let msg = body
+        try { msg = JSON.parse(body).error || JSON.parse(body).detail || body } catch {}
+        throw new Error(`[${res.status}] ${msg}`)
       }
       await fetchMeeting()
     } catch (err) {
@@ -451,7 +453,7 @@ export default function MeetingDetailPage({
                       {item.completed ? (
                         <RiCheckboxCircleLine className="h-4 w-4 text-green-500" />
                       ) : (
-                        <RiCheckboxCircleBlankLine className="h-4 w-4" />
+                        <RiCheckboxBlankCircleLine className="h-4 w-4" />
                       )}
                     </button>
                     <div className="flex-1 min-w-0">

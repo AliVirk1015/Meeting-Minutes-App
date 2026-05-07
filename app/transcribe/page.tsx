@@ -203,7 +203,7 @@ const Transcribe = () => {
         }
       } = {
         title: meetingTitle.trim(),
-        transcript,
+        transcript: transcription,
         source: sourceType,
       }
 

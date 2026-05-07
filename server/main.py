@@ -17,7 +17,7 @@ elif root_env.exists():
     load_dotenv(root_env)
 
 from config import settings  # noqa: E402
-from routers import action_items, health, transcribe  # noqa: E402
+from routers import action_items, health, summarize, transcribe  # noqa: E402
 
 os.makedirs(settings.upload_dir, exist_ok=True)
 
@@ -41,3 +41,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(transcribe.router)
 app.include_router(action_items.router)
+app.include_router(summarize.router)

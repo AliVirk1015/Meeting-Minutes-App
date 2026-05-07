@@ -1,4 +1,5 @@
 import json
+import re
 
 from openai import OpenAI
 
@@ -9,34 +10,74 @@ client = OpenAI(
     base_url=settings.groq_base_url,
 )
 
-SYSTEM_PROMPT = (
-    "You are an expert meeting assistant."
-    " Extract action items from the given transcript.\n"
+ACTION_ITEMS_PROMPT = (
+    "You are an expert meeting assistant. "
+    "Extract action items from the given transcript.\n"
     "\n"
     "For each action item, identify:\n"
     "1. The concrete task that needs to be done\n"
     "2. Who is assigned to do it"
     " (if mentioned \u2014 set to null if unclear)\n"
     "\n"
-    "Return ONLY valid JSON in this exact format:\n"
-    '{"action_items":'
+    "You MUST respond with ONLY a valid JSON object. "
+    "Do NOT include any text, explanation, markdown formatting,"
+    " or code blocks before or after the JSON.\n"
+    "\n"
+    'Expected JSON format: {"action_items":'
     ' [{"text": "the task description",'
     ' "assignee": "person name or null"}]}\n'
     "\n"
     "Be thorough \u2014 capture every actionable item mentioned."
     " If no action items are found, return an empty list."
-    " Do NOT include any text outside the JSON object."
+    " Again: respond ONLY with the raw JSON object, nothing else."
 )
+
+SUMMARIZE_PROMPT = (
+    "You are an expert meeting summarizer. "
+    "Analyse the given meeting transcript and produce a clear,"
+    " structured summary.\n"
+    "\n"
+    "Extract the following:\n"
+    "1. summary: A concise 2-4 sentence overview of the meeting"
+    " covering what was discussed and the outcome.\n"
+    "2. keyPoints: A list of the most important points,"
+    " decisions, or topics raised.\n"
+    "3. decisions: A list of concrete decisions that were made"
+    " during the meeting.\n"
+    "\n"
+    "You MUST respond with ONLY a valid JSON object. "
+    "Do NOT include any text, explanation, markdown formatting,"
+    " or code blocks before or after the JSON.\n"
+    "\n"
+    'Expected JSON format: {"summary": "the overall summary text",'
+    ' "keyPoints": ["point 1", "point 2", ...],'
+    ' "decisions": ["decision 1", "decision 2", ...]}\n'
+    "\n"
+    "If no key points or decisions are found,"
+    " return empty lists for those fields."
+    " Again: respond ONLY with the raw JSON object, nothing else."
+)
+
+MODEL = "llama-3.3-70b-versatile"
+
+
+def _parse_json(raw: str) -> dict:
+    raw = raw.strip()
+
+    json_match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if json_match:
+        raw = json_match.group()
+
+    return json.loads(raw)
 
 
 def extract_action_items(transcript: str) -> list[dict]:
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=MODEL,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": ACTION_ITEMS_PROMPT},
             {"role": "user", "content": transcript},
         ],
-        response_format={"type": "json_object"},
         temperature=0.1,
     )
 
@@ -44,9 +85,37 @@ def extract_action_items(transcript: str) -> list[dict]:
     if not raw:
         raise ValueError("LLM returned empty response")
 
-    parsed = json.loads(raw)
+    parsed = _parse_json(raw)
     items = parsed.get("action_items", [])
     if not isinstance(items, list):
         raise ValueError("Unexpected response format from LLM")
 
     return items
+
+
+def summarise(transcript: str) -> dict:
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {"role": "system", "content": SUMMARIZE_PROMPT},
+            {"role": "user", "content": transcript},
+        ],
+        temperature=0.1,
+    )
+
+    raw = response.choices[0].message.content
+    if not raw:
+        raise ValueError("LLM returned empty response")
+
+    parsed = _parse_json(raw)
+
+    result = {
+        "summary": parsed.get("summary", ""),
+        "keyPoints": parsed.get("keyPoints", []),
+        "decisions": parsed.get("decisions", []),
+    }
+
+    if not result["summary"]:
+        raise ValueError("LLM response missing summary field")
+
+    return result
