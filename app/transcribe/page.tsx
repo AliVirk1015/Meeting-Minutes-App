@@ -1,9 +1,11 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   RiBrain2Line,
   RiMic2Line,
@@ -12,12 +14,15 @@ import {
   RiUpload2Line,
   RiFileCopyLine,
   RiCheckLine,
+  RiSave2Line,
+  RiLoader4Line,
 } from "@remixicon/react"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 
 const Transcribe = () => {
+  const router = useRouter()
   const [isDragging, setIsDragging] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [apiConnected, setApiConnected] = useState<boolean | null>(null)
@@ -29,6 +34,11 @@ const Transcribe = () => {
   const [isRecording, setIsRecording] = useState(false)
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  const [meetingTitle, setMeetingTitle] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [savedMeetingId, setSavedMeetingId] = useState<string | null>(null)
+  const [sourceType, setSourceType] = useState<"UPLOAD" | "RECORDING">("UPLOAD")
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -62,6 +72,9 @@ const Transcribe = () => {
       setUploadedFile(file)
       setTranscription(null)
       setError(null)
+      setSavedMeetingId(null)
+      setMeetingTitle(file.name.replace(/\.[^.]+$/, ""))
+      setSourceType("UPLOAD")
     }
   }
 
@@ -71,12 +84,17 @@ const Transcribe = () => {
       setUploadedFile(file)
       setTranscription(null)
       setError(null)
+      setSavedMeetingId(null)
+      setMeetingTitle(file.name.replace(/\.[^.]+$/, ""))
+      setSourceType("UPLOAD")
     }
   }
 
   const clearFile = (e: React.MouseEvent) => {
     e.stopPropagation()
     setUploadedFile(null)
+    setSavedMeetingId(null)
+    setMeetingTitle("")
   }
 
   const transcribeFile = async (file: File) => {
@@ -132,6 +150,11 @@ const Transcribe = () => {
         const url = URL.createObjectURL(blob)
         setRecordedBlob(blob)
         setPreviewUrl(url)
+        setSourceType("RECORDING")
+        setSavedMeetingId(null)
+        setMeetingTitle(
+          `Recording — ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
+        )
         stream.getTracks().forEach((t) => t.stop())
       }
 
@@ -159,6 +182,65 @@ const Transcribe = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setRecordedBlob(null)
     setPreviewUrl(null)
+    setSavedMeetingId(null)
+    setMeetingTitle("")
+  }
+
+  const saveMeeting = async () => {
+    if (!transcription || !meetingTitle.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      const body: {
+        title: string
+        transcript: string
+        source: "UPLOAD" | "RECORDING" | "LIVE"
+        audioFile?: {
+          filePath: string
+          fileName: string
+          fileSize: number
+          mimeType: string
+        }
+      } = {
+        title: meetingTitle.trim(),
+        transcript,
+        source: sourceType,
+      }
+
+      if (uploadedFile) {
+        body.audioFile = {
+          filePath: `uploads/${uploadedFile.name}`,
+          fileName: uploadedFile.name,
+          fileSize: uploadedFile.size,
+          mimeType: uploadedFile.type || "audio/mpeg",
+        }
+      } else if (recordedBlob) {
+        body.audioFile = {
+          filePath: `uploads/recording.webm`,
+          fileName: "recording.webm",
+          fileSize: recordedBlob.size,
+          mimeType: "audio/webm",
+        }
+      }
+
+      const res = await fetch("/api/meetings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to save meeting")
+      }
+
+      const data = await res.json()
+      setSavedMeetingId(data.meeting.id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save meeting")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const transcribeRecording = () => {
@@ -467,7 +549,7 @@ const Transcribe = () => {
                   <p className="text-sm text-red-500">{error}</p>
                 </div>
               </div>
-            ) : transcription ? (
+            )             : transcription ? (
               <div className="px-8 py-8">
                 <div className="mx-auto max-w-2xl">
                   <div className="mb-4 flex items-center justify-between">
@@ -479,20 +561,70 @@ const Transcribe = () => {
                         Powered by whisper-large-v3-turbo
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 rounded-lg text-xs"
-                      onClick={copyToClipboard}
-                    >
-                      {copied ? (
-                        <RiCheckLine className="text-sm text-green-600" />
+                    <div className="flex items-center gap-2">
+                      {!savedMeetingId ? (
+                        <Button
+                          size="sm"
+                          className="gap-1.5 rounded-lg text-xs bg-primary text-white"
+                          onClick={saveMeeting}
+                          disabled={saving || !meetingTitle.trim()}
+                        >
+                          {saving ? (
+                            <RiLoader4Line className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RiSave2Line className="h-3.5 w-3.5" />
+                          )}
+                          {saving ? "Saving..." : "Save Meeting"}
+                        </Button>
                       ) : (
-                        <RiFileCopyLine className="text-sm" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 rounded-lg text-xs border-green-200 text-green-600"
+                          onClick={() =>
+                            router.push(`/history/${savedMeetingId}`)
+                          }
+                        >
+                          <RiCheckLine className="h-3.5 w-3.5" />
+                          Saved — View Details
+                        </Button>
                       )}
-                      {copied ? "Copied" : "Copy"}
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 rounded-lg text-xs"
+                        onClick={copyToClipboard}
+                      >
+                        {copied ? (
+                          <RiCheckLine className="text-sm text-green-600" />
+                        ) : (
+                          <RiFileCopyLine className="text-sm" />
+                        )}
+                        {copied ? "Copied" : "Copy"}
+                      </Button>
+                    </div>
                   </div>
+
+                  {!savedMeetingId && (
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex-1">
+                        <Label
+                          htmlFor="meeting-title"
+                          className="text-[11px] text-gray-400 mb-1 block"
+                        >
+                          Meeting title
+                        </Label>
+                        <Input
+                          id="meeting-title"
+                          value={meetingTitle}
+                          onChange={(e) => setMeetingTitle(e.target.value)}
+                          className="h-8 text-sm"
+                          placeholder="Enter a title for this meeting..."
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rounded-2xl border border-gray-100 bg-white p-6">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-800">
                       {transcription}
